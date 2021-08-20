@@ -2,6 +2,8 @@
 cuda_visible_devices = '0'
 device = 'cuda:0'
 
+img_size = 1024
+
 ## Logs
 training_step = 1
 image_rec_result_log_snapshot = 100

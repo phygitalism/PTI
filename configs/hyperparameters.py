@@ -26,3 +26,4 @@ pti_learning_rate = 3e-4
 first_inv_lr = 5e-3
 train_batch_size = 1
 use_last_w_pivots = False
+use_multi_id_training = False
