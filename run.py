@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 import pickle
@@ -11,17 +12,18 @@ from scripts.run_pti import run_PTI
 from IPython.display import display
 import matplotlib.pyplot as plt
 from scripts.latent_editor_wrapper import LatentEditorWrapper
+import shutil
 
 def load_generators(model_id, image_name):
     with open(f'{paths_config.checkpoints_dir}/model_{model_id}_{image_name}.pt', 'rb') as f_new: 
         new_G = torch.load(f_new).cuda()
     return new_G
 
-def gen_vec(image_name, latent_editor, alpha=2):
+def gen_vec(image_name, latent_editor, alpha, step):
     w_path_dir = f'{paths_config.embedding_base_dir}/{paths_config.input_data_id}'
     embedding_dir = f'{w_path_dir}/{paths_config.pti_results_keyword}/{image_name}'
     w_pivot = torch.load(f'{embedding_dir}/0.pt')
-    latents_vec = latent_editor.get_single_interface_gan_edits(w_pivot, [-alpha,alpha])
+    latents_vec = latent_editor.get_single_interface_gan_edits(w_pivot, np.linspace(-alpha, alpha, step))
     return latents_vec
     
 def gen_img(image_name, model_id, latents_vec, base_save_path):
@@ -34,9 +36,9 @@ def gen_img(image_name, model_id, latents_vec, base_save_path):
             img = Image.fromarray(img, mode='RGB')
             path = os.path.join(base_save_path, image_name, direction)
             os.makedirs(path, exist_ok=True)
-            img.save(os.path.join(path, str(val) + image_name + '.jpg'))
+            img.save(os.path.join(path, str(val) + "_" + image_name + '.jpg'))
             
-def evaluate():
+def evaluate(args):
     os.makedirs(paths_config.input_data_path, exist_ok=True)
     pre_process_images('/home/data/image_original')
     model_id = run_PTI(use_wandb=False, use_multi_id_training=hyperparameters.use_multi_id_training)
@@ -47,10 +49,23 @@ def evaluate():
     with torch.no_grad():
         for image_name in tqdm(name_list):
             image_name = image_name.split('.')[0]
-            latents_vec = gen_vec(image_name, latent_editor, alpha=2)
+            latents_vec = gen_vec(image_name, latent_editor, alpha=args.alpha, step=args.step)
             gen_img(image_name, model_id, latents_vec, base_save_path)
             print(f'Done for {image_name}') 
-    
+            
+def clean_up():
+    shutil.rmtree(paths_config.input_data_path)
+    shutil.rmtree(paths_config.checkpoints_dir)
+    shutil.rmtree(paths_config.embedding_base_dir)
     
 if __name__ == "__main__":
-    evaluate()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--alpha", type=float, default=10, help="[-alpha,... alpha] range")
+    parser.add_argument("--step", type=int, default=20, help="num for numpy.linspace")
+    parser.add_argument("--data_name", type=str, default='test', help="dataset name")
+    parser.add_argument('--clean_up', action='store_true', default=True, help='delete permanent files after run')
+    args = parser.parse_args()
+    paths_config.input_data_id = args.data_name
+    evaluate(args)
+    if args.clean_up:
+        clean_up()
