@@ -27,6 +27,7 @@ def gen_vec(image_name, latent_editor, alpha, step):
     return latents_vec
     
 def gen_img(image_name, model_id, latents_vec, base_save_path):
+    image_name, ext = image_name.split('.')
     generator_type = paths_config.multi_id_model_type if hyperparameters.use_multi_id_training else image_name
     new_G = load_generators(model_id, generator_type)
     for direction, factor_and_edit in latents_vec.items():
@@ -36,7 +37,7 @@ def gen_img(image_name, model_id, latents_vec, base_save_path):
             img = Image.fromarray(img, mode='RGB')
             path = os.path.join(base_save_path, image_name, direction)
             os.makedirs(path, exist_ok=True)
-            img.save(os.path.join(path, str(val) + "_" + image_name + '.jpg'))
+            img.save(os.path.join(path, str(val) + "_" + image_name + '.' + ext))
             
 def evaluate(args):
     os.makedirs(paths_config.input_data_path, exist_ok=True)
@@ -48,8 +49,7 @@ def evaluate(args):
     os.makedirs(base_save_path, exist_ok=True)
     with torch.no_grad():
         for image_name in tqdm(name_list):
-            image_name = image_name.split('.')[0]
-            latents_vec = gen_vec(image_name, latent_editor, alpha=args.alpha, step=args.step)
+            latents_vec = gen_vec(image_name.split('.')[0], latent_editor, alpha=args.alpha, step=args.step)
             gen_img(image_name, model_id, latents_vec, base_save_path)
             print(f'Done for {image_name}') 
             
